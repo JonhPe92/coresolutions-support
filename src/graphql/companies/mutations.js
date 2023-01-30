@@ -29,3 +29,20 @@ export const DELETE_COMPANY = gql`
   }
 `;
 
+
+
+export const UPDATE_COMPANY = gql`
+  mutation updateCompany($id: ID!, $name: String! , $ruc:String!) {
+    updateCompany(id:$id, data:{name:$name, ruc:$ruc}) {
+      data {
+        id
+        attributes {
+          name
+          ruc
+        }
+      }
+    }
+  }
+`;
+
+

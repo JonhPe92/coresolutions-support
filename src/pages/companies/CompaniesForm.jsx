@@ -6,11 +6,13 @@ import { useLazyQuery, useMutation } from '@apollo/client';
 import { toast } from 'react-hot-toast';
 // @mui
 import { Card, CardHeader, Stack, Button, Container, CardContent, CardActions } from '@mui/material';
+import { LoadingButton } from '@mui/lab';
 
 import CustomTextField from '../../utils/forms/CustomTextField';
 import Iconify from '../../components/iconify';
-import { CREATE_COMPANY } from '../../graphql/companies/mutations';
-import { GET_ALL_COMPANIES, GET_COMPANY } from '../../graphql/companies/queries';
+import { CREATE_COMPANY, UPDATE_COMPANY } from '../../graphql/companies/mutations';
+import { GET_ALL_COMPANIES } from '../../graphql/companies/queries';
+
 
 // form validation
 const validationSchema = yup.object({
@@ -22,15 +24,26 @@ const validationSchema = yup.object({
 const CompaniesForm = () => {
   // validate if editCompany is using the form
   const location = useLocation();
-  // const {id, name, ruc} = location.state;
   const [formType, setformType] = useState('Crear');
-  const [selectedCompany, setSelectedCompany] = useState(location.state);
-  const [company] = useLazyQuery(GET_COMPANY);
- 
+  const selectedCompany =location.state;
+
+  // loading state 
+  const [loader, setLoader]= useState(false);
+
+  useEffect(() => {
+    if (selectedCompany.id){
+      setformType("Actualizar")
+    }
+  },[selectedCompany])
   // mutation create company
-  const [createCompany, { loading, error }] = useMutation(CREATE_COMPANY, {
+  const [createCompany] = useMutation(CREATE_COMPANY, {
     refetchQueries: [{ query: GET_ALL_COMPANIES }],
   }, { errorPolicy: "all" });
+
+    // mutation create company
+    const [updateCompany] = useMutation(UPDATE_COMPANY, {
+      refetchQueries: [{ query: GET_ALL_COMPANIES }],
+    });
 
 
    const initialValues = selectedCompany ?? {
@@ -38,28 +51,48 @@ const CompaniesForm = () => {
     ruc: ""
   }
 
-  console.log("error apolo")
-  console.log(error)
+
   const formik = useFormik({
     initialValues,
     validationSchema,
     onSubmit: async (values, { setSubmitting }) => {
       try {
-        const response=await createCompany({ variables: { name: values.name, ruc: values.ruc } });
-        console.log(response);
-        if (!error) {
-          toast.success('Empresa creada correctamente');
-          formik.handleReset();
-        } else {
-          toast.error('Error al crear la empresa');
+        setSubmitting(true);
+        setLoader(true);
+        if (selectedCompany){
+          const response= await updateCompany({variables:{id:selectedCompany.id, name: values.name, ruc:values.ruc}})
+          const {error, loading} = response;
+          
+          if (!error) {
+            setLoader(loading);
+            toast.success('Empresa actualizada correctamente');
+            setSubmitting(false);
+          } else {
+            toast.error('Error al actualizar la empresa');
+          }
+
+        }else{
+          const response=await createCompany({ variables: { name: values.name, ruc: values.ruc } })
+          const {error, loading} = response;
+          if (!error) {
+            setLoader(loading);
+            toast.success('Empresa creada correctamente');
+            setSubmitting(false);
+            formik.handleReset();
+          } else {
+            toast.error('Error al crear la empresa');
+          }
         }
+;
+        
+       
       } catch (error) {
-        console.log("error crear company")
+        console.log("error crear empresa")
         console.log(error);
         toast.error(error.message);
       }
 
-      console.log(values);
+     
     },
   });
 
@@ -117,9 +150,10 @@ const CompaniesForm = () => {
             </CardContent>
 
             <CardActions sx={{ paddingLeft: '2em' }}>
-              <Button variant="contained" type="submit" disabled={!formik.isValid || formik.isSubmitting}>
+             <LoadingButton loading={loader} variant="contained" type="submit" disabled={!formik.isValid || formik.isSubmitting || !formik.dirty}>
+              
                 {formType}
-              </Button>
+              </LoadingButton>
             </CardActions>
           </Card>
         </Container>
